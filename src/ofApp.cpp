@@ -27,11 +27,13 @@ void ofApp::setup()
     gui.add(randomRotationFrequency.setup("randomRotationFrequency", 0, 0, 1));
     gui.add(lowPass.setup("lowPass", 0, 0, 1));
     gui.add(highPass.setup("highPass", 1, 0, 1));
-    gui.add(minScale.setup("minScale", -1, -1, 1));
-    gui.add(maxScale.setup("maxScale", 1, -1, 1));
+    gui.add(minScale.setup("minScale", -1, -2, 2));
+    gui.add(maxScale.setup("maxScale", 1, -2, 2));
     gui.add(jitterScaleAmount.setup("jitterScaleAmount", 0, 0, 5));
     gui.add(jitterScaleFrequency.setup("jitterScaleFrequency", 0, 0, 1));
-    gui.add(noiseScale.setup("noiseScale", 0.0001, 0.00001, 0.001));
+    gui.add(noiseScaleX.setup("noiseScaleX", 0.0001, 0, 0.005));
+    gui.add(noiseScaleY.setup("noiseScaleY", 0.0001, 0, 0.005));
+    gui.add(noiseScaleT.setup("noiseScaleT", 0.0001, 0, 0.005));
     gui.add(timeScale.setup("timeScale", 5, 0, 30));
     gui.add(timeSkipAmount.setup("timeSkipAmount", 0, 0, 1000));
     gui.add(timeSkipFrequency.setup("timeSkipFrequency", 0, 0, 0.1));
@@ -39,7 +41,9 @@ void ofApp::setup()
     gui.add(randomSliceFrequency.setup("randomSliceFrequency", 0, 0, 1));
     gui.add(sourceChangeFrequency.setup("sourceChangeFrequency", 0, 0, 0.1));
     gui.add(minSliceIndex.setup("minSliceIndex", 0, 0, slices.size()));
-    gui.add(maxSliceIndex.setup("maxSliceIndex", slices.size(), 0, slices.size()));
+    gui.add(maxSliceIndex.setup("maxSliceIndex", slices.size(), 0, slices.size() - 1));
+    gui.add(randomColor.setup("randomColor", false));
+    gui.add(randomColorFrequency.setup("randomColorFrequency", 0, 0, 0.0001));
     gui.add(shuffleSlices.setup("shuffleSlices"));
     gui.add(saveImage.setup("saveImage"));
     gui.add(clear.setup("clear"));
@@ -53,7 +57,7 @@ ofVec2f ofApp::resizeProportionally(int srcWidth, int srcHeight, int maxWidth, i
 
 void ofApp::loadSlices()
 {
-    string path = "./slices/klimt";
+    string path = "./slices/vangogh";
     ofDirectory dir(path);
     dir.allowExt("png");
     dir.listDir();
@@ -61,16 +65,35 @@ void ofApp::loadSlices()
     {
         ofImage img;
         img.load(dir.getPath(i));
-        float ratio = img.getWidth() / img.getHeight();
-        ofVec2f r = resizeProportionally(img.getWidth(), img.getHeight(), 300, 300);
-        img.resize(r.x, r.y);
+        //ofVec2f r = resizeProportionally(img.getWidth(), img.getHeight(), 300, 300);
+        //img.resize(r.x, r.y);
         slices.push_back(img);
+    }
+}
+
+void ofApp::loadSlicesFromSource()
+{
+    string path = "./sources/face";
+    ofDirectory dir(path);
+    dir.allowExt("png");
+    dir.allowExt("jpg");
+    dir.listDir();
+    for (int i = 0; i < dir.size(); i++)
+    {
+        ofImage img;
+        img.load(dir.getPath(i));
+        for (int j = 0; j < 10; j++)
+        {
+            ofImage slice;
+            slice.cropFrom(img, ofRandom(img.getWidth()), ofRandom(img.getHeight()), ofRandom(300), ofRandom(300));
+            slices.push_back(slice);
+        }
     }
 }
 
 void ofApp::loadSources()
 {
-    string path = "./sources/two";
+    string path = "./sources/vangogh";
     ofDirectory dir(path);
     dir.allowExt("png");
     dir.allowExt("jpg");
@@ -86,31 +109,43 @@ void ofApp::loadSources()
 
 void ofApp::render(int x, int y)
 {
-    ofColor color = sources[currentSourceIndex].getColor(x, y);
 
-    float noise = ofNoise(x * noiseScale, y * noiseScale, time * noiseScale);
-    float scale = ofMap(noise, 0, 1, minScale, maxScale);
+    if (randomColor && ofRandom(1) < randomColorFrequency)
+    {
+        int x = ofRandom(ofGetWidth());
+        int y = ofRandom(ofGetHeight());
+        color = sources[currentSourceIndex].getColor(x, y);
+    }
+    else if (!randomColor)
+    {
+        color = sources[currentSourceIndex].getColor(x, y);
+    }
+
+    float noise = ofNoise(x * noiseScaleX, y * noiseScaleY, time * noiseScaleT);
+    float scale = ofMap(noise, lowPass, highPass, minScale, maxScale);
 
     if (ofRandom(1) < jitterScaleFrequency)
     {
         scale *= ofRandom(jitterScaleAmount);
     }
 
-    float rotation = ofMap(noise, 0, 1, minRotation, maxRotation);
+    float rotation = ofMap(noise, lowPass, highPass, minRotation, maxRotation);
 
     if (ofRandom(1) < randomRotationFrequency)
     {
         rotation = ofRandom(-360, 360);
     }
 
-    int sliceIndex = floor(ofMap(noise, 0, 1, minSliceIndex, maxSliceIndex));
+    int sliceIndex = floor(ofMap(noise, lowPass, highPass, minSliceIndex, maxSliceIndex));
 
     if (ofRandom(1) < randomSliceFrequency)
     {
-        sliceIndex = floor(ofRandom(slices.size()));
+        sliceIndex = floor(ofRandom(slices.size() - 1));
     }
 
-    float alpha = ofMap(noise, 0, 1, minAlpha, maxAlpha);
+    ofClamp(sliceIndex, 0, slices.size() - 1);
+
+    float alpha = ofMap(noise, lowPass, highPass, minAlpha, maxAlpha);
 
     if (ofRandom(1) < randomAlphaFrequency)
     {

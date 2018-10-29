@@ -25,6 +25,7 @@ public:
   void saveFbo();
   void render(int x, int y);
   void loadSlices();
+  void loadSlicesFromSource();
   void loadSources();
   void onShuffleSlicesPressed();
   void onSaveImagePressed();
@@ -43,7 +44,9 @@ public:
   ofxFloatSlider maxScale;
   ofxFloatSlider jitterScaleAmount;
   ofxFloatSlider jitterScaleFrequency;
-  ofxFloatSlider noiseScale;
+  ofxFloatSlider noiseScaleX;
+  ofxFloatSlider noiseScaleY;
+  ofxFloatSlider noiseScaleT;
   ofxFloatSlider timeScale;
   ofxFloatSlider timeSkipAmount;
   ofxFloatSlider timeSkipFrequency;
@@ -52,6 +55,8 @@ public:
   ofxIntSlider maxSliceIndex;
   ofxFloatSlider randomSliceFrequency;
   ofxFloatSlider sourceChangeFrequency;
+  ofxToggle randomColor;
+  ofxFloatSlider randomColorFrequency;
   ofxButton shuffleSlices;
   ofxButton saveImage;
   ofxButton clear;
@@ -65,4 +70,5 @@ public:
   int currentSourceIndex;
   bool isDrawing;
   bool isMouseDrawing;
+  ofColor color;
 };
