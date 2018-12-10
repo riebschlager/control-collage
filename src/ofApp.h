@@ -30,7 +30,7 @@ public:
   void onShuffleSlicesPressed();
   void onSaveImagePressed();
   void onClearPressed();
-  ofVec2f resizeProportionally(int srcWidth, int srcHeight, int maxWidth, int maxHeight);
+  ofVec2f resizeProportionally(float srcWidth, float srcHeight, float maxWidth, float maxHeight);
 
   ofxIntSlider minAlpha;
   ofxIntSlider maxAlpha;

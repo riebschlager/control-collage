@@ -15,6 +15,7 @@ void ofApp::setup()
     currentSourceIndex = 0;
     isDrawing = false;
 
+    loadSlicesFromSource();
     loadSlices();
     loadSources();
 
@@ -40,7 +41,7 @@ void ofApp::setup()
     gui.add(rendersPerFrame.setup("rendersPerFrame", 1000, 1, 5000));
     gui.add(randomSliceFrequency.setup("randomSliceFrequency", 0, 0, 1));
     gui.add(sourceChangeFrequency.setup("sourceChangeFrequency", 0, 0, 0.1));
-    gui.add(minSliceIndex.setup("minSliceIndex", 0, 0, slices.size()));
+    gui.add(minSliceIndex.setup("minSliceIndex", 0, 0, slices.size() - 1));
     gui.add(maxSliceIndex.setup("maxSliceIndex", slices.size(), 0, slices.size() - 1));
     gui.add(randomColor.setup("randomColor", false));
     gui.add(randomColorFrequency.setup("randomColorFrequency", 0, 0, 0.0001));
@@ -49,7 +50,7 @@ void ofApp::setup()
     gui.add(clear.setup("clear"));
 }
 
-ofVec2f ofApp::resizeProportionally(int srcWidth, int srcHeight, int maxWidth, int maxHeight)
+ofVec2f ofApp::resizeProportionally(float srcWidth, float srcHeight, float maxWidth, float maxHeight)
 {
     float ratio = min(maxWidth / srcWidth, maxHeight / srcHeight);
     return ofVec2f(srcWidth * ratio, srcHeight * ratio);
@@ -57,7 +58,7 @@ ofVec2f ofApp::resizeProportionally(int srcWidth, int srcHeight, int maxWidth, i
 
 void ofApp::loadSlices()
 {
-    string path = "./slices/vangogh";
+    string path = "./slices/some";
     ofDirectory dir(path);
     dir.allowExt("png");
     dir.listDir();
@@ -65,8 +66,8 @@ void ofApp::loadSlices()
     {
         ofImage img;
         img.load(dir.getPath(i));
-        //ofVec2f r = resizeProportionally(img.getWidth(), img.getHeight(), 300, 300);
-        //img.resize(r.x, r.y);
+        ofVec2f r = resizeProportionally(int(img.getWidth()), int(img.getHeight()), 600, 600);
+        img.resize(r.x, r.y);
         slices.push_back(img);
     }
 }
@@ -82,10 +83,16 @@ void ofApp::loadSlicesFromSource()
     {
         ofImage img;
         img.load(dir.getPath(i));
-        for (int j = 0; j < 10; j++)
+        img.setImageType(OF_IMAGE_GRAYSCALE);
+        for (int j = 0; j < 50; j++)
         {
             ofImage slice;
-            slice.cropFrom(img, ofRandom(img.getWidth()), ofRandom(img.getHeight()), ofRandom(300), ofRandom(300));
+            float w = ofRandom(600);
+            float h = ofRandom(600);
+            float x = ofRandom(0, img.getWidth() - w);
+            float y = ofRandom(0, img.getHeight() - h);
+
+            slice.cropFrom(img, x, y, w, h);
             slices.push_back(slice);
         }
     }
@@ -93,7 +100,7 @@ void ofApp::loadSlicesFromSource()
 
 void ofApp::loadSources()
 {
-    string path = "./sources/vangogh";
+    string path = "./sources/one";
     ofDirectory dir(path);
     dir.allowExt("png");
     dir.allowExt("jpg");
@@ -136,14 +143,12 @@ void ofApp::render(int x, int y)
         rotation = ofRandom(-360, 360);
     }
 
-    int sliceIndex = floor(ofMap(noise, lowPass, highPass, minSliceIndex, maxSliceIndex));
+    int sliceIndex = floor(ofMap(noise, lowPass, highPass, minSliceIndex, maxSliceIndex, true));
 
     if (ofRandom(1) < randomSliceFrequency)
     {
         sliceIndex = floor(ofRandom(slices.size() - 1));
     }
-
-    ofClamp(sliceIndex, 0, slices.size() - 1);
 
     float alpha = ofMap(noise, lowPass, highPass, minAlpha, maxAlpha);
 
@@ -164,7 +169,10 @@ void ofApp::render(int x, int y)
     ofScale(scale, scale);
     ofRotateDeg(rotation);
     ofSetColor(color, alpha);
-    slices[sliceIndex].draw(0, 0);
+    if (sliceIndex < slices.size())
+    {
+        slices[sliceIndex].draw(0, 0);
+    }
     ofPopMatrix();
     canvas.end();
 }
