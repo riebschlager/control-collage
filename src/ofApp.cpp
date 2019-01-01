@@ -2,141 +2,115 @@
 
 void ofApp::setup()
 {
+    ofSetFrameRate(60);
+
     shuffleSlices.addListener(this, &ofApp::onShuffleSlicesPressed);
     saveImage.addListener(this, &ofApp::onSaveImagePressed);
     clear.addListener(this, &ofApp::onClearPressed);
 
-    canvas.allocate(1920 * 2, 1080 * 2, GL_RGBA);
-    canvas.begin();
-    ofBackground(0, 0, 0);
-    canvas.end();
+    mCanvas.allocate(CANVAS_WIDTH, CANVAS_HEIGHT, GL_RGBA);
+    mCanvas.begin();
+    ofBackground(0);
+    mCanvas.end();
 
-    time = 0;
-    currentSourceIndex = 0;
-    isDrawing = false;
+    mTime = 0;
+    mCurrentSourceIndex = 0;
+    mIsDrawing = false;
+    mIsGuiVisible = true;
 
-    loadSlicesFromSource();
-    loadSlices();
-    loadSources();
+    mBasePath = ofFilePath::getUserHomeDir() + "/Documents/Art/";
 
-    gui.setup();
-    gui.add(minAlpha.setup("minAlpha", 0, 0, 255));
-    gui.add(maxAlpha.setup("maxAlpha", 255, 0, 255));
-    gui.add(randomAlphaFrequency.setup("randomAlphaFrequency", 0, 0, 0.1));
-    gui.add(minRotation.setup("minRotation", -180, -360, 360));
-    gui.add(maxRotation.setup("maxRotation", 180, -360, 360));
-    gui.add(randomRotationFrequency.setup("randomRotationFrequency", 0, 0, 1));
-    gui.add(lowPass.setup("lowPass", 0, 0, 1));
-    gui.add(highPass.setup("highPass", 1, 0, 1));
-    gui.add(minScale.setup("minScale", -1, -2, 2));
-    gui.add(maxScale.setup("maxScale", 1, -2, 2));
-    gui.add(jitterScaleAmount.setup("jitterScaleAmount", 0, 0, 5));
-    gui.add(jitterScaleFrequency.setup("jitterScaleFrequency", 0, 0, 1));
-    gui.add(noiseScaleX.setup("noiseScaleX", 0.0001, 0, 0.005));
-    gui.add(noiseScaleY.setup("noiseScaleY", 0.0001, 0, 0.005));
-    gui.add(noiseScaleT.setup("noiseScaleT", 0.0001, 0, 0.005));
-    gui.add(timeScale.setup("timeScale", 5, 0, 30));
-    gui.add(timeSkipAmount.setup("timeSkipAmount", 0, 0, 1000));
-    gui.add(timeSkipFrequency.setup("timeSkipFrequency", 0, 0, 0.1));
-    gui.add(rendersPerFrame.setup("rendersPerFrame", 1000, 1, 5000));
-    gui.add(randomSliceFrequency.setup("randomSliceFrequency", 0, 0, 1));
-    gui.add(sourceChangeFrequency.setup("sourceChangeFrequency", 0, 0, 0.1));
-    gui.add(minSliceIndex.setup("minSliceIndex", 0, 0, slices.size() - 1));
-    gui.add(maxSliceIndex.setup("maxSliceIndex", slices.size(), 0, slices.size() - 1));
-    gui.add(randomColor.setup("randomColor", false));
-    gui.add(randomColorFrequency.setup("randomColorFrequency", 0, 0, 0.0001));
-    gui.add(shuffleSlices.setup("shuffleSlices"));
-    gui.add(saveImage.setup("saveImage"));
-    gui.add(clear.setup("clear"));
+    loadSlices("powder", 600, 600);
+    loadSlices("watercolor", 600, 600);
+    loadSlices("painter", 600, 600);
+    loadSlices("flora", 600, 600);
+    loadSources("lit");
+
+    mGui.setup();
+    mGui.add(mAlpha.setup("Alpha", ofVec2f(0, 255), ofVec2f(0, 0), ofVec2f(255, 255)));
+    mGui.add(randomAlphaFrequency.setup("randomAlphaFrequency", 0, 0, 0.1));
+    mGui.add(mRotation.setup("Rotation", ofVec2f(-90, 90), ofVec2f(-360, -360), ofVec2f(360, 360)));
+    mGui.add(randomRotationFrequency.setup("randomRotationFrequency", 0, 0, 1));
+    mGui.add(lowPass.setup("lowPass", 0, 0, 1));
+    mGui.add(highPass.setup("highPass", 1, 0, 1));
+    mGui.add(mScale.setup("Scale", ofVec2f(-1, 1), ofVec2f(-2, -2), ofVec2f(2, 2)));
+    mGui.add(jitterScaleAmount.setup("jitterScaleAmount", 0, 0, 5));
+    mGui.add(jitterScaleFrequency.setup("jitterScaleFrequency", 0, 0, 1));
+    mGui.add(mNoiseScale.setup("Noise Scale", ofVec3f(0.1, 0.1, 0.1), ofVec3f(0, 0, 0), ofVec3f(1, 1, 1)));
+    mGui.add(timeScale.setup("timeScale", 5, 0, 30));
+    mGui.add(timeSkipAmount.setup("timeSkipAmount", 0, 0, 1000));
+    mGui.add(timeSkipFrequency.setup("timeSkipFrequency", 0, 0, 0.1));
+    mGui.add(rendersPerFrame.setup("rendersPerFrame", 1000, 1, 5000));
+    mGui.add(randomSliceFrequency.setup("randomSliceFrequency", 0, 0, 1));
+    mGui.add(sourceChangeFrequency.setup("sourceChangeFrequency", 0, 0, 0.1));
+    mGui.add(minSliceIndex.setup("minSliceIndex", 0, 0, mSlices.size() - 1));
+    mGui.add(maxSliceIndex.setup("maxSliceIndex", mSlices.size(), 0, mSlices.size() - 1));
+    mGui.add(randomColor.setup("randomColor", false));
+    mGui.add(randomColorFrequency.setup("randomColorFrequency", 0, 0, 0.0001));
+    mGui.add(shuffleSlices.setup("shuffleSlices"));
+    mGui.add(saveImage.setup("saveImage"));
+    mGui.add(clear.setup("clear"));
 }
 
-ofVec2f ofApp::resizeProportionally(float srcWidth, float srcHeight, float maxWidth, float maxHeight)
+void ofApp::update()
 {
-    float ratio = min(maxWidth / srcWidth, maxHeight / srcHeight);
-    return ofVec2f(srcWidth * ratio, srcHeight * ratio);
-}
+    mTime += timeScale;
 
-void ofApp::loadSlices()
-{
-    string path = "./slices/some";
-    ofDirectory dir(path);
-    dir.allowExt("png");
-    dir.listDir();
-    for (int i = 0; i < dir.size(); i++)
+    if (ofRandom(1) < timeSkipFrequency)
     {
-        ofImage img;
-        img.load(dir.getPath(i));
-        ofVec2f r = resizeProportionally(int(img.getWidth()), int(img.getHeight()), 600, 600);
-        img.resize(r.x, r.y);
-        slices.push_back(img);
+        mTime += timeSkipAmount;
     }
-}
 
-void ofApp::loadSlicesFromSource()
-{
-    string path = "./sources/face";
-    ofDirectory dir(path);
-    dir.allowExt("png");
-    dir.allowExt("jpg");
-    dir.listDir();
-    for (int i = 0; i < dir.size(); i++)
+    if (ofRandom(1) < sourceChangeFrequency)
     {
-        ofImage img;
-        img.load(dir.getPath(i));
-        img.setImageType(OF_IMAGE_GRAYSCALE);
-        for (int j = 0; j < 50; j++)
-        {
-            ofImage slice;
-            float w = ofRandom(600);
-            float h = ofRandom(600);
-            float x = ofRandom(0, img.getWidth() - w);
-            float y = ofRandom(0, img.getHeight() - h);
+        mCurrentSourceIndex = floor(ofRandom(mSources.size()));
+    }
 
-            slice.cropFrom(img, x, y, w, h);
-            slices.push_back(slice);
+    for (int i = 0; i < rendersPerFrame; i++)
+    {
+        if (mIsDrawing)
+        {
+            randomPoint.x = ofRandom(0, CANVAS_WIDTH);
+            randomPoint.y = ofRandom(0, CANVAS_HEIGHT);
+            render(randomPoint.x, randomPoint.y);
         }
     }
 }
 
-void ofApp::loadSources()
+void ofApp::draw()
 {
-    string path = "./sources/one";
-    ofDirectory dir(path);
-    dir.allowExt("png");
-    dir.allowExt("jpg");
-    dir.listDir();
-    for (int i = 0; i < dir.size(); i++)
+    ofClear(0);
+    mCanvas.draw(0, 0, APP_WIDTH, APP_HEIGHT);
+    if (mIsGuiVisible)
     {
-        ofImage img;
-        img.load(dir.getPath(i));
-        img.resize(canvas.getWidth(), canvas.getHeight());
-        sources.push_back(img);
+        mGui.draw();
     }
 }
 
 void ofApp::render(int x, int y)
 {
-
     if (randomColor && ofRandom(1) < randomColorFrequency)
     {
-        int x = ofRandom(ofGetWidth());
-        int y = ofRandom(ofGetHeight());
-        color = sources[currentSourceIndex].getColor(x, y);
+        int x = ofRandom(APP_WIDTH);
+        int y = ofRandom(APP_HEIGHT);
+        mColor = mSources[mCurrentSourceIndex].getColor(x, y);
     }
     else if (!randomColor)
     {
-        color = sources[currentSourceIndex].getColor(x, y);
+        mColor = mSources[mCurrentSourceIndex].getColor(x, y);
     }
 
-    float noise = ofNoise(x * noiseScaleX, y * noiseScaleY, time * noiseScaleT);
-    float scale = ofMap(noise, lowPass, highPass, minScale, maxScale);
+    ofVec3f ns = mNoiseScale * 0.005;
+
+    float noise = ofNoise(x * ns.x, y * ns.y, mTime * ns.z);
+    float scale = ofMap(noise, lowPass, highPass, mScale->x, mScale->y);
 
     if (ofRandom(1) < jitterScaleFrequency)
     {
         scale *= ofRandom(jitterScaleAmount);
     }
 
-    float rotation = ofMap(noise, lowPass, highPass, minRotation, maxRotation);
+    float rotation = ofMap(noise, lowPass, highPass, mRotation->x, mRotation->y);
 
     if (ofRandom(1) < randomRotationFrequency)
     {
@@ -147,10 +121,10 @@ void ofApp::render(int x, int y)
 
     if (ofRandom(1) < randomSliceFrequency)
     {
-        sliceIndex = floor(ofRandom(slices.size() - 1));
+        sliceIndex = floor(ofRandom(mSlices.size() - 1));
     }
 
-    float alpha = ofMap(noise, lowPass, highPass, minAlpha, maxAlpha);
+    float alpha = ofMap(noise, lowPass, highPass, mAlpha->x, mAlpha->y);
 
     if (ofRandom(1) < randomAlphaFrequency)
     {
@@ -162,56 +136,24 @@ void ofApp::render(int x, int y)
         return;
     }
 
-    canvas.begin();
+    mCanvas.begin();
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     ofPushMatrix();
     ofTranslate(x, y);
     ofScale(scale, scale);
     ofRotateDeg(rotation);
-    ofSetColor(color, alpha);
-    if (sliceIndex < slices.size())
+    ofSetColor(mColor, alpha);
+    if (sliceIndex < mSlices.size())
     {
-        slices[sliceIndex].draw(0, 0);
+        mSlices[sliceIndex].draw(0, 0);
     }
     ofPopMatrix();
-    canvas.end();
-}
-
-void ofApp::update()
-{
-    time += timeScale;
-
-    if (ofRandom(1) < timeSkipFrequency)
-    {
-        time += timeSkipAmount;
-    }
-
-    if (ofRandom(1) < sourceChangeFrequency)
-    {
-        currentSourceIndex = floor(ofRandom(sources.size()));
-    }
-
-    for (int i = 0; i < rendersPerFrame; i++)
-    {
-        if (isDrawing)
-        {
-            randomPoint.x = ofRandom(0, canvas.getWidth());
-            randomPoint.y = ofRandom(0, canvas.getHeight());
-            render(randomPoint.x, randomPoint.y);
-        }
-    }
-}
-
-void ofApp::draw()
-{
-    ofClear(0, 0, 0);
-    canvas.draw(0, 0, ofGetWidth(), ofGetHeight());
-    gui.draw();
+    mCanvas.end();
 }
 
 void ofApp::onShuffleSlicesPressed()
 {
-    std::random_shuffle(slices.begin(), slices.end());
+    std::random_shuffle(mSlices.begin(), mSlices.end());
 }
 
 void ofApp::onSaveImagePressed()
@@ -221,19 +163,19 @@ void ofApp::onSaveImagePressed()
 
 void ofApp::onClearPressed()
 {
-    canvas.begin();
-    ofClear(0, 0, 0);
-    canvas.end();
+    mCanvas.begin();
+    ofClear(0);
+    mCanvas.end();
 }
 
 void ofApp::saveFbo()
 {
     ofFbo img;
     ofPixels pixels;
-    img.allocate(1920 * 2, 1080 * 2, GL_RGBA);
+    img.allocate(CANVAS_WIDTH, CANVAS_HEIGHT, GL_RGBA);
     img.begin();
-    ofBackground(0, 0, 0);
-    canvas.draw(0, 0);
+    ofBackground(0);
+    mCanvas.draw(0, 0);
     img.end();
     img.readToPixels(pixels);
     ofSaveImage(pixels, "output/image" + ofToString(ofGetUnixTime()) + ".tif");
@@ -243,17 +185,25 @@ void ofApp::keyPressed(int key)
 {
     if (key == ' ')
     {
-        isDrawing = !isDrawing;
+        mIsDrawing = !mIsDrawing;
+    }
+    if (key == 'x')
+    {
+        mIsMouseDrawing = true;
     }
     if (key == 's')
     {
-        isMouseDrawing = true;
+        saveFbo();
+    }
+    if (key == 'c')
+    {
+        onClearPressed();
     }
 }
 
 void ofApp::keyReleased(int key)
 {
-    isMouseDrawing = false;
+    mIsMouseDrawing = false;
 }
 
 void ofApp::mouseMoved(int x, int y)
@@ -262,10 +212,10 @@ void ofApp::mouseMoved(int x, int y)
 
 void ofApp::mouseDragged(int x, int y, int button)
 {
-    if (isMouseDrawing)
+    if (mIsMouseDrawing)
     {
-        int nx = floor(ofMap(x, 0, ofGetWidth(), 0, canvas.getWidth()));
-        int ny = floor(ofMap(y, 0, ofGetHeight(), 0, canvas.getHeight()));
+        int nx = floor(ofMap(x, 0, APP_WIDTH, 0, CANVAS_WIDTH));
+        int ny = floor(ofMap(y, 0, APP_HEIGHT, 0, CANVAS_HEIGHT));
         render(nx, ny);
     }
 }
@@ -296,4 +246,82 @@ void ofApp::gotMessage(ofMessage msg)
 
 void ofApp::dragEvent(ofDragInfo dragInfo)
 {
+}
+
+ofVec2f ofApp::resizeProportionally(float srcWidth, float srcHeight, float maxWidth, float maxHeight)
+{
+    float ratio = min(maxWidth / srcWidth, maxHeight / srcHeight);
+    return ofVec2f(srcWidth * ratio, srcHeight * ratio);
+}
+
+void ofApp::loadSlices(string folderName)
+{
+    string path = mBasePath + "slices/" + folderName;
+    ofDirectory dir(path);
+    dir.allowExt("png");
+    dir.allowExt("jpg");
+    dir.listDir();
+    for (int i = 0; i < dir.size(); i++)
+    {
+        ofImage img;
+        img.load(dir.getPath(i));
+        mSlices.push_back(img);
+    }
+}
+
+void ofApp::loadSlices(string folderName, int maxWidth, int maxHeight)
+{
+    string path = mBasePath + "slices/" + folderName;
+    ofDirectory dir(path);
+    dir.allowExt("png");
+    dir.allowExt("jpg");
+    dir.listDir();
+    for (int i = 0; i < dir.size(); i++)
+    {
+        ofImage img;
+        img.load(dir.getPath(i));
+        ofVec2f r = resizeProportionally(img.getWidth(), img.getHeight(), maxWidth, maxHeight);
+        img.resize(r.x, r.y);
+        mSlices.push_back(img);
+    }
+}
+
+void ofApp::loadSlicesFromSource(string folderName, int numberOfSlices, int maxWidth, int maxHeight)
+{
+    string path = mBasePath + "sources/" + folderName;
+    ofDirectory dir(path);
+    dir.allowExt("png");
+    dir.allowExt("jpg");
+    dir.listDir();
+    for (int i = 0; i < dir.size(); i++)
+    {
+        ofImage img;
+        img.load(dir.getPath(i));
+        for (int j = 0; j < numberOfSlices; j++)
+        {
+            ofImage slice;
+            int w = ofRandom(maxWidth);
+            int h = ofRandom(maxHeight);
+            int x = ofRandom(0, img.getWidth() - w);
+            int y = ofRandom(0, img.getHeight() - h);
+            slice.cropFrom(img, x, y, w, h);
+            mSlices.push_back(slice);
+        }
+    }
+}
+
+void ofApp::loadSources(string folderName)
+{
+    string path = mBasePath + "sources/" + folderName;
+    ofDirectory dir(path);
+    dir.allowExt("png");
+    dir.allowExt("jpg");
+    dir.listDir();
+    for (int i = 0; i < dir.size(); i++)
+    {
+        ofImage img;
+        img.load(dir.getPath(i));
+        img.resize(CANVAS_WIDTH, CANVAS_HEIGHT);
+        mSources.push_back(img);
+    }
 }
