@@ -20,10 +20,8 @@ void ofApp::setup()
 
     mBasePath = ofFilePath::getUserHomeDir() + "/Documents/Art/";
 
-    loadSlices("powder", 600, 600);
+    loadSlices("mand", 600, 600);
     loadSlices("watercolor", 600, 600);
-    loadSlices("painter", 600, 600);
-    loadSlices("flora", 600, 600);
     loadSources("lit");
 
     mGui.setup();
@@ -187,10 +185,6 @@ void ofApp::keyPressed(int key)
     {
         mIsDrawing = !mIsDrawing;
     }
-    if (key == 'x')
-    {
-        mIsMouseDrawing = true;
-    }
     if (key == 's')
     {
         saveFbo();
@@ -199,11 +193,23 @@ void ofApp::keyPressed(int key)
     {
         onClearPressed();
     }
+    if (key == 'g')
+    {
+        mIsGuiVisible = !mIsGuiVisible;
+    }
+    if (key == 'M')
+    {
+        mGui.minimizeAll();
+        mGui.maximizeAll();
+    }
+    if (key == 'm')
+    {
+        mGui.minimizeAll();
+    }
 }
 
 void ofApp::keyReleased(int key)
 {
-    mIsMouseDrawing = false;
 }
 
 void ofApp::mouseMoved(int x, int y)
@@ -212,10 +218,10 @@ void ofApp::mouseMoved(int x, int y)
 
 void ofApp::mouseDragged(int x, int y, int button)
 {
-    if (mIsMouseDrawing)
+    if (ofGetKeyPressed('x'))
     {
-        int nx = floor(ofMap(x, 0, APP_WIDTH, 0, CANVAS_WIDTH));
-        int ny = floor(ofMap(y, 0, APP_HEIGHT, 0, CANVAS_HEIGHT));
+        int nx = floor(ofMap(x, 0, APP_WIDTH, 0, CANVAS_WIDTH, true));
+        int ny = floor(ofMap(y, 0, APP_HEIGHT, 0, CANVAS_HEIGHT, true));
         render(nx, ny);
     }
 }

@@ -40,7 +40,6 @@ public:
 
   bool mIsGuiVisible;
   bool mIsDrawing;
-  bool mIsMouseDrawing;
   float mTime;
   int mCurrentSourceIndex;
   ofColor mColor;
